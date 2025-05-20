@@ -5,25 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Web Map - Enhanced</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
   <style>
     body, html { margin: 0; padding: 0; height: 100%; }
     #map { width: 100%; height: 100vh; }
+    #exportBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      padding: 10px 15px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #exportBtn:hover {
+      background-color: #218838;
+    }
   </style>
 </head>
 <body>
+  <button id="exportBtn">Export GeoJSON</button>
   <div id="map"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
   <script>
-    // Inisialisasi peta
-    var map = L.map('map').setView([-7.748, 112.241], 15); // Disesuaikan ke lokasi data
+    var map = L.map('map').setView([-7.748, 112.241], 15);
 
-    // Tile dasar mirip Google Maps (Carto Light)
     var baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a> | &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Tambahkan GeoJSON dari file eksternal
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({
+      edit: {
+        featureGroup: drawnItems
+      },
+      draw: {
+        polygon: true,
+        polyline: true,
+        rectangle: true,
+        circle: false,
+        marker: true,
+        circlemarker: false
+      }
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, function (e) {
+      var layer = e.layer;
+      drawnItems.addLayer(layer);
+
+      var geojson = layer.toGeoJSON();
+      console.log("GeoJSON hasil gambar:", JSON.stringify(geojson));
+
+      layer.bindPopup("Fitur baru ditambahkan").openPopup();
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', function() {
+      var data = drawnItems.toGeoJSON();
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+      var downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href", dataStr);
+      downloadAnchorNode.setAttribute("download", "export.geojson");
+      document.body.appendChild(downloadAnchorNode); // diperlukan untuk Firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    });
+
     fetch('data.geojson')
       .then(response => response.json())
       .then(data => {
@@ -41,7 +95,6 @@
             }
             layer.bindPopup(popupContent);
 
-            // Tambahkan marker titik tengah
             if (feature.geometry.type === "LineString") {
               var latlngs = feature.geometry.coordinates.map(function(coord) {
                 return [coord[1], coord[0]];
