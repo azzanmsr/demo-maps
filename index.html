@@ -40,6 +40,25 @@
               }
             }
             layer.bindPopup(popupContent);
+
+            // Tambahkan marker titik tengah
+            if (feature.geometry.type === "LineString") {
+              var latlngs = feature.geometry.coordinates.map(function(coord) {
+                return [coord[1], coord[0]];
+              });
+              var middleIndex = Math.floor(latlngs.length / 2);
+              var midpoint = latlngs[middleIndex];
+
+              var marker = L.circleMarker(midpoint, {
+                radius: 6,
+                fillColor: "#ff7800",
+                color: "#000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+              }).addTo(map);
+              marker.bindPopup(popupContent);
+            }
           }
         }).addTo(map);
 
